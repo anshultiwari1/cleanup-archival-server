@@ -1,0 +1,726 @@
+<!--
+Author : Anshul Tiwari
+Date : Sep 30, 2015
+Description : Asset List Page.
+-->
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>
+			Asset Info
+		</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="shortcut icon" href="../media/Images/favicon.ico" />
+		<!-- <link href="../media/css/Site.css" rel="stylesheet" type="text/css" /> -->
+		<link href="../media/css/jquery.datepick.css" rel="stylesheet" type="text/css" />
+		<link href="../media/bootstrap-3.3.4-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+		<script src="../media/js/jquery-1.10.2.min.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/js/jquery.jsonrpc.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/bootstrap-3.3.4-dist/js/bootstarp.min.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/js/jquery-ui-1.10.0.min.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/js/jquery.datepick.js" language="javascript" type="text/javascript"></script>
+		<script type="text/javascript">
+                        var url = 'http://172.16.15.221:8002/jsonrpc';
+			var rpc = $.jsonRPC.setup({
+				endPoint: url,
+				namespace: ''
+			});
+			var month_dict = {"1":"Jan", "2":"Feb", "3":"Mar", "4":"Apr", "5":"May", "6":"Jun", "7":"Jul", "8":"Aug", "9":"Sep", "10":"Oct", "11":"Nov", "12":"Dec"};
+			var shot_feed = [];
+			//shot_feed.map(function(el){return el[0];});
+			var asset_feed = [];
+
+			function setClient(){
+				var server = $('#server').val();
+			}
+
+
+			function loadSeqList(){
+				rpc.batchRequest([
+					{method: 'getSequenceList', params: []}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						$('#seq_info').empty();
+						$('#seq_info').append('<option>---</option>');
+						$.each(result, function(value){
+							$('#seq_info').append('<option>'+result[value]+'</option>');
+						});
+					}
+				});
+			}
+
+			function onChangeSeq(){
+				seq = $('#seq_info').val();
+				if (seq=='---'){
+					$('#scn_info').attr('disabled', 'disabled');
+					$('#shot_info').attr('disabled', 'disabled');
+					$('#scn_info').empty();
+					$('#scn_info').append('<option>---</option>');
+					$('#shot_info').empty();
+					$('#shot_info').append('<option>---</option>');
+				}
+				else {
+					$('#scn_info').removeAttr('disabled');
+					$('#shot_info').empty();
+					$('#shot_info').append('<option>---</option>');
+					loadScnList();
+				}
+			}
+
+			function loadScnList(){
+				seq = $('#seq_info').val();
+				rpc.batchRequest([
+					{method: 'getSceneList', params: [seq]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						$('#scn_info').empty();
+						$('#scn_info').append('<option>---</option>');
+						$.each(result, function(value){
+							$('#scn_info').append('<option>'+result[value]+'</option>');
+						});
+					}
+				});
+			}
+
+			function onChangeScn(){
+				seq = $('#scn_info').val();
+				scn = $('#scn_info').val();
+				if (seq=='---'){
+					$('#shot_info').attr('disabled', 'disabled');
+					$('#shot_info').empty();
+					$('#shot_info').append('<option>---</option>');
+				}
+				else {
+					$('#shot_info').removeAttr('disabled');
+					loadShotList();
+				}
+			}
+
+			function loadShotList(){
+				seq = $('#seq_info').val();
+				scn = $('#scn_info').val();
+				rpc.batchRequest([
+					{method: 'getShotList', params: [seq, scn]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						console.log(json[0]);
+						var result = json[0]['result'];
+						$('#shot_info').empty();
+						$('#shot_info').append('<option>---</option>');
+						$.each(result, function(value){
+							$('#shot_info').append('<option>'+result[value]+'</option>');
+						});
+					}
+				});
+			}
+
+
+			function loadUserShots(){
+				var feed = {"seq":'', "scn":'', "shot":'', "user":'ashish'};
+				rpc.batchRequest([
+					//{method: 'getUserShotTaskList', params: [feed]}
+					{method: 'getUserAssetList', params: ['ashish']}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						console.log(json[0]);
+						var result = json[0]['result'];
+					}
+				});
+			}
+
+
+			function draw_table(){
+				//loading_time(1);
+				if ($('#user').val()=="") {	alert("Error: user field can not be blank");}
+				if ($('#user_info').val() == '---') {	alert("Error: option need to be selected");}
+				//console.log(feed);
+				else {
+					if ($('#user_info').val() == 'get shots') {	draw_user_shots_table();}
+					if ($('#user_info').val() == 'get assets') {	draw_user_assets_table();}
+				}
+			}
+
+			function draw_blank_table(){
+				//loading_time(1);
+				$("#userinfoTable > thead").html("");
+				$("#userinfoTable > thead:last").append('<tr><th colspan=1>shots/ assets list</th></tr>');
+				$("#userinfoTable > tbody").html("");
+				for (i=0; i < 15; i++){
+					var row = '<tr><td></td></tr>';
+					$("#userinfoTable > tbody:last").append(row);
+				};
+			}
+
+			function load_blank_details(){
+				//loading_time(1);
+				$("#fileInfoTable > thead").html("");
+				$("#fileInfoTable > thead:last").append('<tr><th colspan=4>shots/ assets files</th></tr>');
+				$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+				$("#fileInfoTable > tbody").html("");
+			}
+
+
+			function draw_user_shots_table(){
+				//loading_time(1);
+				load_blank_details();
+				if ($('#seq_info').val() == '---') {	seq = '';} else {	seq = $('#seq_info').val();}
+				if ($('#scn_info').val() == '---') {	scn = '';} else {	scn = $('#scn_info').val();}
+				if ($('#shot_info').val() == '---') {	sht = '';} else {	sht = $('#shot_info').val();}
+				var feed = {"seq":seq, "scn":scn, "shot":sht, "user":$('#user').val()};
+				//console.log(feed);
+				rpc.batchRequest([
+					{method: 'getUserShotTaskList', params: [feed]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						var rowCount = 0;
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						$("#userinfoTable > thead").html("");
+						$("#userinfoTable > thead:last").append('<tr><th colspan=3>'+$('#user').val()+'\'s shots</th></tr>');
+						$("#userinfoTable > thead:last").append('<tr><th>Sequence</th><th>Scene</th><th>Shot</th></tr>');
+						$("#userinfoTable > tbody").html("");
+						$.each(result, function(value){
+							shot_feed[rowCount] = [result[value]['sequence'], result[value]['scene'], result[value]['shot'], result[value]['shot_code']];
+							var row = '<tr onclick="loadShotDetails(\''+rowCount+'\')">'+
+									'<td><input class="tab_info" value="'+result[value]['sequence']+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" value="'+result[value]['scene']+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" value="'+result[value]['shot']+'" type="text" disabled="disabled"/></td>'+
+								'</tr>';
+							$("#userinfoTable > tbody:last").append(row);
+							rowCount += 1; 
+						});
+						// loader finish
+						//loading_time(0);
+					}
+				});
+			}
+
+
+			function draw_user_assets_table(){
+				//loading_time(1);
+				load_blank_details();
+				var feed = $('#user').val();
+				rpc.batchRequest([
+					{method: 'getUserAssetList', params: [feed]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						var rowCount = 0;
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						$("#userinfoTable > thead").html("");
+						$("#userinfoTable > thead:last").append('<tr><th colspan=4>'+$('#user').val()+'\'s assets</th></tr>');
+						$("#userinfoTable > thead:last").append('<tr><th>Asset Code</th><th>Name</th><th>Category</th><th>Type</th></tr>');
+						$("#userinfoTable > tbody").html("");
+						$.each(result, function(value){
+							asset_feed[rowCount] = [result[value]['name'], result[value]['asset_code']];
+							var row = '<tr onclick="loadAssetDetails(\''+rowCount+'\')">>'+
+									'<td><input class="tab_info" value="'+result[value]['asset_code']+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" value="'+result[value]['name']+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" value="'+result[value]['category']+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" value="'+result[value]['type']+'" type="text" disabled="disabled"/></td>'+
+								'</tr>';
+							$("#userinfoTable > tbody:last").append(row);
+							rowCount += 1;
+						});
+						// loader finish
+						//loading_time(0);
+					}
+				});
+			}
+
+
+			function loadShotDetails(info){
+				feed = {'seq':shot_feed[info][0], 'scn':shot_feed[info][1], 'shot':shot_feed[info][2], 'shot_code':shot_feed[info][3]}
+				rpc.batchRequest([
+					{method: 'getShotFiles', params: [feed]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						var count = 0;
+						$("#fileInfoTable > thead").html("");
+						$("#fileInfoTable > thead:last").append('<tr><th colspan=4>'+shot_feed[info][2]+'_'+shot_feed[info][3]+'</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+						$("#fileInfoTable > tbody").html("");
+						$.each(result, function(value){
+							if (count < 2){
+								var row = '<tr style="background-color:#E99999;">'+
+										'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+										'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'+
+										'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'
+									'</tr>';
+							}
+							else {
+								var row = '<tr id="'+result[value][0]+'">'+
+										'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+										'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" onchange="onStatusChange(\'save\',\''+count+'\')" style="width:15px;"/></td>'+
+										'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" onchange="onStatusChange(\'del\',\''+count+'\')" style="width:15px;"/></td>'
+									'</tr>';
+							}
+							count += 1;
+							$("#fileInfoTable > tbody:last").append(row);
+						});
+						// loader finish
+						//loading_time(0);
+					}
+				});
+			}
+
+			function loadAssetDetails(info){
+				feed = {'asset':asset_feed[info][0], 'asset_code':asset_feed[info][1]}
+				rpc.batchRequest([
+					{method: 'getAssetFiles', params: [feed]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json){
+						//console.log(json[0]);
+						var result = json[0]['result'];
+						var count = 0;
+						$("#fileInfoTable > thead").html("");
+						$("#fileInfoTable > thead:last").append('<tr><th colspan=4>'+asset_feed[info][0]+'_'+asset_feed[info][1]+'</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th>file Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+						$("#fileInfoTable > tbody").html("");
+						$.each(result, function(value){
+							var row = '<tr>'+
+									'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+									'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
+									'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" onchange="onStatusChange(\'save\',\''+count+'\')" style="width:15px;"/></td>'+
+									'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" onchange="onStatusChange(\'del\',\''+count+'\')" style="width:15px;"/></td>'
+								'</tr>';
+							count += 1;
+							$("#fileInfoTable > tbody:last").append(row);
+						});
+						//attn_time_open();
+						// loader finish
+						//loading_time(0);
+					}
+				});
+			}
+
+			function onStatusChange(opr, row){
+				var rpo;
+				if (opr == 'save'){	rpo = 'del';}
+				else {	rpo = 'save';}
+				if ($('#cb_'+opr+'_'+row).is(':checked')){	$('#cb_'+rpo+'_'+row).attr('disabled', 'diabled');	}
+				else {	$('#cb_'+rpo+'_'+row).removeAttr('disabled');	}
+			}
+
+			function updateStatus(){
+				var rowDataInfo = [];
+				//$('#fileInfoTable > tbody').find('tr').each(function(){
+				//	rowDataInfo.push($(this).attr('id'));
+				//}
+				for (row=0; row<$('#fileInfoTable > tbody').find('tr').length; row++){
+					rowDataInfo.push([$('#ip_file_'+row).attr('name'), ($('#cb_save_'+row).is(':checked')).toString(), ($('#cb_del_'+row).is(':checked')).toString()]);
+				};
+				//console.log(rowDataInfo);
+			}
+
+			/*
+			function loading_time(visible){
+				if (visible) {
+					$("#loading_fade").show();
+					$("#loader").show();
+				}
+				else {
+					$("#loader").hide();
+					$("#loading_fade").hide();
+				}
+			}
+
+			function attn_time_open(){
+				window.scrollTo(0,0);
+				$("#fade").slideDown("fast");
+				$("#attn_time").delay(100).slideDown("slow");
+				$("#attn_time").show();
+			}
+
+
+			function attn_time_close(){
+				$("#attn_time").delay(100).slideUp("slow");
+				$("#fade").delay(300).slideUp("slow");
+			}*/
+
+			$(document).ready(function (){
+				var now = new Date();
+				$('#date').html(("0" + now.getDate()).slice(-2)+' - '+("0" + (now.getMonth()+1)).slice(-2)+' - '+now.getFullYear());
+				setClient();
+				//draw_blank_table();
+				loadSeqList();
+				//loadUserShots();
+			});
+			
+		</script> 
+		<style>
+			*{
+				margin: 0 auto 0 auto;
+			}
+
+			header{
+				width: 100%;
+				height: 90px;
+				font-size: 25px;
+				display: inline-block;
+				padding: 1px;
+				margin: auto;
+			}
+			.logoleft{
+				float: left;
+				text-align: left;
+				width: auto;
+				padding: 2px;
+				height:80px;
+				margin:5px;
+			}
+			#heading{
+				vertical-align: super;
+				padding: 20px 0 0 20px;
+				font-weight: bold;
+			}
+			
+			body{
+				width: 99%;
+				padding: 0;
+				margin: auto;
+				font-size: 14px;
+				font-family: Arial, Helvetica;
+			}
+			
+			.form-control{
+				padding: 0 12px;
+				font-size: inherit;
+				height: 28px;
+				width: initial;
+			}
+
+			#infoSheet{
+				background-color:#c1c1c1;
+				border: solid 1px rgb(46, 41, 32);
+			}
+			#infoHead{
+				padding: 0 15px 0 15px;
+				font-weight: bold;
+				font-size: 18px;
+				margin-left: 40%;
+			}
+			#info1{
+				padding: 8px;
+				clear: both;
+				margin: 5px;
+			}
+			#date{
+				padding: 0 15px 0 15px;
+				font-weight: bold;
+				font-size: 13px;
+				margin-left: 5%;
+			}
+			#logout{
+				padding: 2px 15px 0 15px;
+				font-weight: bold;
+				font-size: 13px;
+				float: right;
+				color: red;
+			}
+			
+			section{
+				display: block;
+				background: #d0d0d0;
+				border-radius: 10px;
+				padding: 15px;
+				margin: 8px;
+				height: 83em;
+				clear: both;
+			}
+			
+			.cluster{
+				clear:both;
+			}
+			.info_input{
+				height:3em;
+				line-height:3em;
+				position:relative;
+			}
+			.info_left{
+				width:10em;
+				text-align:right;
+				margin: 0 2em;
+				font-weight:bold;
+			}
+			.info_right{
+				display: inline-block;
+				float: right;
+				width: 62%;
+			}
+			.info_thick{
+				width: 99%;
+				line-height:1.5em;
+				border: solid 1px black;
+			}
+			 .info_table{
+				border-radius:5px;
+				font-weight: bold;
+
+			}
+			.info_table th{
+				background-color: #b0b0b0;
+				color: whitesmoke;
+				text-align: center;
+				height: 1.5em;
+			}
+			.tab_info{
+				width: 99%;
+				background: transparent;
+				border: none;
+				outline: 0;
+				text-align: center;
+				font-weight: bold;
+			}
+
+			#loader{
+				display: none;
+				position: absolute;
+				top: 45%;
+				left: 48%;
+				padding: 10px;
+				z-index: 1020;
+				width:30%;
+				margin-top: 2em;
+			}
+			#attn_time{
+				display: none;
+				position: absolute;
+				top: 25%;
+				left: 60%;
+				margin-left: -30%;
+				padding: 10px;
+				z-index: 1002;
+				background: #d0d0d0;
+				width:42%;
+				border:solid 4px rgb(255, 242, 242);
+				border-radius: 5px;
+				margin-top: 2em;
+			}
+			#fade, #loading_fade{
+				display: none;
+				position: fixed;
+				top: 0%;
+				left: 0%;
+				width: 100%;
+				height: 100%;
+				background-color: #000;
+				z-index:1001;
+				-moz-opacity: 0.7;
+				opacity:.70;
+				filter: alpha(opacity=70);
+			}
+
+			.SubR{
+				width: 10em;
+				height: 2em;
+				float: right;
+				margin-top: 1%;
+				margin-right: 2%;
+				padding: 0;
+				border-color: whitesmoke;
+				color: whitesmoke;
+				font-weight: bold;
+			}
+
+			#pre, #nxt{
+				border-color: #d9534f;
+				border-style: Solid;
+				border-radius: 5em;
+				height: 14px;
+				width: 14px;
+				vertical-align: middle;
+				margin-left: -20px;
+				margin-bottom: 3px;
+			}
+
+			.filter_table{
+				margin: 1em 0;
+				padding: 0.5em;
+				border: 1px solid #2e6da4;
+				border-radius: 5px;
+				background: #b0b0b0;
+				border-collapse: separate;
+			}
+			.filter_table tr{
+				margin: 2em 0;
+			}
+			.filter_table td{
+				width: 60em;
+				height: 2em;
+				text-align: left;
+			}
+
+			label{
+				font-weight: bold;
+				color: #2968b8;
+			}
+			#server{
+				color: whitesmoke;
+				background: #337ab7;
+				margin-left: 8em;
+				border-color: whitesmoke;
+				display: inline;
+			}
+
+			footer{
+				height: 2em;
+				z-index: 1;
+				color: rgb(255, 252, 190);
+				font-family: Arial, Helvetica;
+				font-size: 1em;
+				margin-left: 5%;
+			}
+
+			#fileInfoTable td{
+				text-align: center;
+			}
+			#filter{
+				width: 12%;
+				margin-right: 15px;
+				background: whitesmoke;
+				border: solid 1px #2968b8;
+				outline: 2px;
+				text-align: right;
+				font-weight: bold;
+			}
+
+
+		</style>
+	</head>
+	<body>
+		<div id="main-container" class="container-fluid" style="position:relative;">
+			<header>
+				<div class="logoleft">
+					<span id="heading">Barajoun Entertainment</span>
+				</div>
+			</header>
+			<div id="infoSheet" class="well well-sm">
+				<span id="infoHead">Asset Info Sheet</span>
+			</div>
+			<div id="info1">
+				<span id="date"></span>
+				<span id="logout"><a href="../accounts/logout/">sign out</a></span>
+			</div>
+			<section>
+				</br>
+				<div style="width:90%;" >
+					<div style="display:block;">
+						<div class="cluster">
+							<label style="margin-left:5px;">Select server: </label><select class="form-control info_left" id="server"><option selected>lic</option><option>fox</option></select>
+							<table class="filter_table">
+								<tr>
+								      <td><label>Sequence: </label></td>
+								      <td><label>Scene: </label></td>
+								      <td><label>Shot: </label></td>
+								      <td><label>User: </label></td>
+								      <td><button class="btn btn-primary btn-md SubR" type="submit" style="margin-top:0; margin-right:5%;" onclick="draw_size_table()">Get size info</button></td>
+								</tr>
+								<tr style="margin-top:2px;">
+								      <td><select class="form-control" id="seq_info" onchange="onChangeSeq()"><option selected>---</option></select></td>
+								      <td><select class="form-control" id="scn_info" onchange="onChangeScn()" disabled><option selected>---</option></select></td>
+								      <td><select class="form-control" id="shot_info" disabled><option selected>---</option></select></td>
+								      <td><input class="form-control" type="text" id="user"/></td>
+								      <td></td>
+								</tr>
+								<tr style="margin-top:2px;">
+								      <td></td>
+								      <td></td>
+								      <td></td>
+								      <td><select class="form-control" id="user_info"><option selected>---</option><option>get shots</option><option>get assets</option></select></td>
+								      <td><button class="btn btn-primary btn-md SubR" type="submit" style="margin-top:0; margin-right:5%;" onclick="draw_table()">Get info</button></td>
+								</tr>
+							</table>
+						</div>
+						<div class="cluster" style="height:66em;" >
+							<div style="float:left; width:64%; height:100%; overflow-y:scroll;">
+								<div><input id="filter" type="text"/></div>
+								</br>
+								<label>List: </label>
+								<table class="table table-striped table-bordered table-hover table-condensed info_table" style="height=52em;" id="userinfoTable">
+									<thead>
+									</thead>
+									<tbody style="overflow-y:scroll">
+									</tbody>
+								</table>
+							</div>
+							<div style="float:right; width:35%; height:100%; overflow-y:scroll;">
+								<label>Details: </label>
+								<table class="table table-striped table-bordered info_table" id="fileInfoTable">
+									<thead>
+										<tr><th>File Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>
+									</thead>
+									<tbody>
+									</tbody>
+								</table></br>
+								<div>
+									  <button class="btn btn-primary btn-md SubR" type="submit" id="report" onclick="updateStatus()">Save status</button>
+								</div>
+
+							</div>
+						</div>
+
+						</hr>
+						<!--
+						<div id="attn_time" class="cluster" style="max-height:60em; overflow-y:scroll;" >
+							<table class="table table-striped table-bordered info_table" id="assetInfoTable">
+								<thead>
+									<tr><th>Asset Code</th><th>Name</th><th>Category</th><th>Type</th><th></th></tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table></br>
+						</div>
+						<div id="fade" onClick="attn_time_close();"></div>
+						<div class="cluster" style="height:66em;" id="loader"><img src="../media/Images/loading.gif" height="45" width="45"/></div>
+						<div id="loading_fade"></div>
+						-->
+					</div>
+				</div>
+			</section>
+		</div>
+		<footer>
+			All information here is from tactic database.
+		</footer>
+	</body>
+</html>

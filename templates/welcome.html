@@ -1,0 +1,269 @@
+<!--
+StereoD.
+Author  : Anshul Tiwari
+Date    : Apr 19, 2013
+
+Description : Help Page For ?.
+-->
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>
+			Welcome
+		</title>
+		<link rel="shortcut icon" href="../media/Images/favicon.ico" />
+		<link href="../media/css/Site.css" rel="stylesheet" type="text/css" />
+		<style type="text/css" title="currentStyle">
+				@import "../media/DataTables/examples/examples_support/themes/smoothness/jquery-ui-1.8.4.custom.css";
+				.ui-widget {
+					font-size: 0.8em;
+				}
+		</style>
+		<script src="../media/DataTables/media/js/jquery.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/js/jquery-ui-1.10.0.min.js" language="javascript" type="text/javascript"></script>
+		<script src="../media/js/jquery.jsonrpc.js"></script>
+		<script type="text/javascript">
+			var rpc = $.jsonRPC.setup({
+				endPoint: 'http://10.1.122.104:8000/jsonrpc',
+				namespace: ''
+			});
+			var url = 'http://10.1.122.104:8000/jsonrpc';
+			var user_info;
+			var month_dict = {"1":"Jan", "2":"Feb", "3":"Mar", "4":"Apr", "5":"May", "6":"Jun", "7":"Jul", "8":"Aug", "9":"Sep", "10":"Oct", "11":"Nov", "12":"Dec"};
+			var dict_month = {"Jan":"01", "Feb":"02", "Mar":"03", "Apr":"04", "May":"05", "Jun":"06", "Jul":"07", "Aug":"08", "Sep":"09", "Oct":"10", "Nov":"11", "Dec":"12"};
+		
+			function userData(){
+				rpc.batchRequest([
+					{method: 'getEmployeeByLogin', params: ["{{login}}"]}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json) {
+						user_info = json[0]['result'];
+						//nameDisplay();
+						$('#name').html(user_info['emp_name'].split(' ')[0] +' | <a href="../accounts/logout/">sign out</a>')
+					}
+				});	
+			}
+
+			function meetWeek(np){
+				var today, day1, day2;
+				if (np == 0){
+					today = new Date();
+					var diff = today.getDay()%7-1;
+					day1 = (new Date(today.setDate(today.getDate()-diff-6)));
+					day2 = (new Date(today.setDate(day1.getDate()+6)));
+				}
+				else{
+					today = (new Date($('#d1').html()));
+					day1 = (new Date(today.setDate(today.getDate()+7*np)));
+					day2 = (new Date(today.setDate(day1.getDate()+6)));
+				}
+				//console.log(new Date(), day1)
+				if(new Date() >= day1){
+					$('#d1').html(day1.getDate()+'-'+month_dict[day1.getMonth()+1]+'-'+day1.getFullYear());
+					$('#d2').html(day2.getDate()+'-'+month_dict[day2.getMonth()+1]+'-'+day2.getFullYear());
+					getSel();
+				}
+			}
+
+			function userList(){
+				rpc.batchRequest([
+					{method: 'getEmployee', params: []}
+				], {
+					url: url,
+					error: function(json) {
+						alert("Error");
+					},
+					success: function(json) {
+						user_info = json[0]['result'];
+						window.scrollTo(0,0);
+						$("#fade").slideDown("fast");
+						$("#attn_time").delay(100).slideDown("slow");
+						$("#attenTab> tbody").html("");
+						$.each(user_info, function(value) {
+							var row = "<tr><td><input id="+user_info[value]['emp_code']+" name="+user_info[value]['emp_name'].replace(/ +/g, '_')+" type='checkbox'/><label>"+user_info[value]['emp_name']+"</label></td></tr>"
+							$("#attenTab > tbody:last").append(row);
+						});
+						$("#attn_time").show();
+					}
+				});	
+			}
+
+		function getSel(){
+			var list = '';
+			var head = '';
+			var chair ='';
+			var date = $('#d1').html().split('-')[2] + '-' + dict_month[$('#d1').html().split('-')[1]] + '-' + $('#d1').html().split('-')[0];
+			rpc.batchRequest([
+				{method: 'getAttendence', params: [date]}
+			], {
+				url: url,
+				error: function(json) {
+					alert("Error");
+				},
+				success: function(json) {
+					var result = json[0]['result'];
+					if (result != undefined){
+							$.each(result, function(value) {
+							if(result[value]['pos']=='attend'){
+								list = list + ', ' + result[value]['emp']
+							}
+							if(result[value]['pos']=='head'){
+								head = result[value]['emp']
+								$('#head').html(head +'.');
+								$('#emp_head').css('display', 'none');
+							}
+							if(result[value]['pos']=='chair'){
+								chair = result[value]['emp']
+								$('#chair').html(chair +'.');
+								$('#emp_chair').css('display', 'none');
+							}
+						});
+						$('#attn').html(list.replace(',', '')+'.');
+					}
+					else{
+						$('#attn').html('Mark Attendence');
+					}
+					if(head == ''){
+						$('#head').html('');
+						$('#emp_head').css('display', 'table-cell');
+						$('#emp_head').val('');
+					}
+					if(chair == ''){
+						$('#chair').html('');
+						$('#emp_chair').css('display', 'table-cell');
+						$('#emp_chair').val('');
+					}
+				}
+			});
+		}
+
+		function markSel(){
+			var list = '';
+			var checkList = $(":checked");
+			//console.log(checkList)
+			if(checkList.length==0){	return 0;	}
+			else{
+				for(i=0; i<=checkList.length-1; i++){
+					list = list + ', ' + checkList[i].name.replace(/_+/g, " ")
+					var attn = {'date': '', 'emp': checkList[i].id, 'pos': 'attend'};
+					fillAttend(attn);
+				}
+				$('#attn').html(list.replace(', ', '')+'.');
+				return 1;
+			}
+		}
+
+		function fillAttend(attn){
+			var date = $('#d1').html().split('-')[2] + '-' + dict_month[$('#d1').html().split('-')[1]] + '-' + $('#d1').html().split('-')[0];
+			attn['date'] = date;
+			//console.log(attn);
+			rpc.batchRequest([
+				{method: 'markAttendence', params: [attn]}
+			], {
+				url: url,
+				error: function(json) {
+					alert("Error");
+				},
+				success: function(json) {
+					//console.log(json)
+				}
+			});
+		}
+
+		function attn_time_close(){
+			//if(markSel()){
+				$("#attn_time").delay(100).slideUp("slow");
+				$("#fade").delay(300).slideUp("slow");
+			//}
+		}
+
+		$(document).ready(function () {
+			meetWeek(0);
+			$("#emp_head").autocomplete({
+				source: [{label:"Pankaj Kumar Singh", value:"P0004"},{label:"Dadasaheb Ahmad Shaikh", value:"P0432"},{label:"Sachin Sonbaji Parkhi", value:"P1063"}],
+				select: function(e, ui){
+					$('#head').html(ui['item']['label']+'.');
+					$('#emp_head').css('display', 'none');
+					var attn = {'date': '', 'emp': ui['item']['value'], 'pos': 'head'};
+					fillAttend(attn);
+				}
+			});
+			$("#emp_chair").autocomplete({
+				source: [{label:"Sujitkumar Ganpat Shirkar", value:"P0615"},{label:"Pankaj Kumar Singh", value:"P0004"},{label:"Dadasaheb Ahmad Shaikh", value:"P0432"},{label:"Sachin Sonbaji Parkhi", value:"P1063"}],
+				select: function(e, ui){
+					$('#chair').html(ui['item']['label']+'.');
+					$('#emp_chair').css('display', 'none');
+					var attn = {'date': '', 'emp': ui['item']['value'], 'pos': 'chair'};
+					fillAttend(attn);
+				}
+			});
+			getSel();
+		});
+
+		</script> 
+	</head>
+	<body>
+		<div id="main-container" class="page" style="position:relative;">
+			<header>
+				<div class="logo1">
+					<img id="Image1" src="../media/Images/Logo.png" />
+					<span id="heading">Weekly Update</span>
+				</div>
+				<div class="logo2">
+					<img id="Image2" src="../media/Images/dds-logo.png" />
+				</div>
+			</header>
+			<nav id="menu">
+				<ul>
+					<li class="menuitem"><a href="../welcome">Home</a></li>
+					<li class="menuitem"><a href="../add">Add New Form</a></li>
+					<li class="menuitem"><a href="../edit">Edit Form</a></li>
+					<li class="menuitem"><a href="../submit">Submit Form</a></li>
+					<li class="menuitem"><a href="../review">Review Form</a></li>
+					<li class="menuitem"><a href="../info" target="blank"">Help/Info</a></li>
+				</ul>
+				<div>
+					<h3 id="name"><script>
+						userData();
+					</script></h3>
+				</div>
+			</nav>
+			<section>
+				<h3>Welcome Aboard!!</h3>
+					</br></br>
+					<h4 style="margin-left:20px; margin-bottom:-15px;">You are welcome to the <span style="color: brown">'Pune-IT Internal Weekly Meetings'</span>.</h4>
+					</br></br>
+					<div style="border:1px solid #1c478e; border-radius:10px; float:center; text-align:left; margin:1% auto; display:block; height:450px; width:55%;">
+						<table id="welcome">
+							<tr><td><h4 style="margin-left:40px; margin-bottom:10px;">Meeting for the week:  </h4></td>
+								<td><span><input class="preNxt" type="image" src="../../media/Images/previous.png" onclick="meetWeek(-1)" />
+									<span id='meetWeek' style="color: red"><span id='d1'></span> <span id='d2'></span>
+									<input class="preNxt" type="image" src="../../media/Images/next.png" onclick="meetWeek(1)" /></span></td></tr>
+							<tr><td><h4 style="margin-left:40px; margin-bottom:10px;">Members: 	</h4></td><td><span style="color: blue">Pankaj Kumar Singh, Amol Vasant Shinde, Nitin B Nikumbh, Mayur Ravindra Khule, Manoj Budhaji Chitte,</span></td></tr>
+							<tr><td></td><td><span style="color: blue">Sujitkumar Ganpat Shirkar, Dadasaheb Ahmad Shaikh, Sachin Sonbaji Parkhi,</span></td></tr>
+							<tr><td></td><td><span style="color: blue">Chetan Vishnu Satpute, Bharat Ramesh Mahale,</span></td></tr>
+							<tr><td></td><td><span style="color: blue">Anshul Tiwari, Avinash Kumar Mallik, Pavan Arvind Maradia,</span></td></tr>
+							<tr><td></td><td><span style="color: blue">Lalit D. Bhavsar, Mayur Prashant Duchakke,  Kamlesh Vasant Chalkar, Shailesh Prakash Shegaonkar.</span></td></tr>
+							<tr><td><h4 style="margin-left:40px; margin-bottom:10px;">Present Members:	</h4></td><td><span id="attn" style="color: blue" onclick='userList()'>Mark Attendence</span></td></tr>
+							<tr><td><h4 style="margin-left:40px; margin-bottom:10px;">Headed By:	</h4></td><td><span id="head" style="color: blue"></span><input id="emp_head" type="text"/></td></tr>
+							<tr><td><h4 style="margin-left:40px; margin-bottom:10px;">Chaired By:	</h4></td><td><span id="chair" style="color: blue"></span><input id="emp_chair" type="text"/></td></tr>
+						</table>
+					</div>
+					<div id="attn_time">
+						<table id="attenTab" align="center">
+						<tbody></tbody>
+						</table>
+					</div>
+					<div id="fade" onClick="attn_time_close();"></div>
+	
+			</section>
+		</div>
+		<footer>
+			All information here is superficial.
+		</footer>
+	</body>
+</html>
