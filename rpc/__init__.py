@@ -26,6 +26,7 @@ from django.core.files.base import ContentFile
 import jsonrpclib
 import json
 import os, sys, glob
+import shutil
 import getpass
 import types
 from ast import literal_eval
@@ -129,76 +130,67 @@ def getScnByCode(code):
 def getShotByCode(code):
   return u.server.query("vfx/shot", filters=[('code', code)])[0]
 
-def getUserShotTaskList(feed):
-  print feed
-  seq = feed['seq']
-  scn = feed['scn']
-  sht = feed['shot']
-  user = feed['user']
+def getUserAssignedShotList(user):
   userShotsList = []
-  #expr = ("@SOBJECT(%s/shot.sthpw/task['assigned', '%s']['project_code', '%s']['pipeline_code', '%s'])" % (user, user, u.getProject(),'bilal/Lighting'))
-  expr = ("@SOBJECT(sthpw/task['assigned', '%s']['project_code', '%s']['pipeline_code', '%s'])" % (user, u.getProject(), 'bilal/Lighting'))
+  expr = ("@SOBJECT(sthpw/task['assigned', '%s']['project_code', '%s'])" % (user, u.getProject()))
   result = u.server.eval(expr, search_keys=[])
   for sh in result:
-    shot = getShotByCode(sh['search_code'])
-    '''
-    if seq and seq == shot['seq_code']:
-      if scn and scn == shot['scn_code']:
-        if sht == shot['code']:
-          userShotsList.append({'shot_code':shot['code'], 'sequence':getSeqByCode(shot['seq_code'])['name'], 'scene':getScnByCode(shot['scn_code'])['name'], 'shot':shot['name']})
-        else:
-     '''
-    userShotsList.append({'shot_code':shot['code'], 'sequence':getSeqByCode(shot['seq_code'])['name'], 'scene':getScnByCode(shot['scn_code'])['name'], 'shot':shot['name']})
+    if "SHOT" in sh['search_code']:
+      shot = getShotByCode(sh['search_code'])
+      userShotsList.append({'shot_code':shot['code'], 'sequence':getSeqByCode(shot['seq_code'])['name'], 'scene':getScnByCode(shot['scn_code'])['name'], 'shot':shot['name']})
   return sorted(userShotsList, key= lambda k:(k['sequence']))
 
+def getUserAssignedAssetList(user):
+  userAssetList = []
+  expr = ("@SOBJECT(sthpw/task['assigned', '%s']['project_code', '%s'])" % (user, u.getProject()))
+  assets = u.server.eval(expr, search_keys=[])
+  for ast in assets:
+    if "ASSET" in ast['search_code']:
+      asset = u.server.eval("@SOBJECT(vfx/asset['code','%s'])" % (ast['search_code']))
+      if asset:
+        ele = {'asset_code':asset[0]['code'], 'name':asset[0]['name'], 'category':asset[0]['asset_category'], 'type':asset[0]['asset_type']}
+        if ele not in userAssetList:
+          #userAssetList.append({'asset_code':asset[0]['code'], 'name':asset[0]['name'], 'category':asset[0]['asset_category'], 'type':asset[0]['asset_type']})
+          userAssetList.append(ele)
+  if userAssetList:
+    return sorted(userAssetList, key= lambda k:(k['name']))
+  else:
+    return userAssetList
+
 def getShotFiles(feed):
-  #feed = {'seq':'seq34', 'scn':'scn61', 'shot':'sh001', 'shot_code':'SHOT00001336'}
   shotPath = '/nas/projects/Tactic/bilal/sequences/{0}/{1}/{2}_{3}/lighting/lighting/scenes/*_v[0-9]*'.format(feed['seq'],feed['scn'],feed['shot'],feed['shot_code'])
   shotFiles = [(fi, size_format(os.path.getsize(fi))) for fi in glob.glob(shotPath)]
   shotFiles.sort(key= lambda f:(os.path.getmtime(f[0])), reverse=True)
   return shotFiles
 
 def getAssetFiles(feed):
-  #feed = {'asset':'seq34', 'asset_code':'SHOT00001336'}
   assetFiles = []
-  assetPaths = ['/nas/projects/Tactic/bilal/asset/{0}_{1}/modeling/*/alembic/*_v[0-9]*'.format(feed['asset'],feed['asset_code']), '/nas/projects/Tactic/bilal/asset/{0}_{1}/modeling/*/scenes/*_v[0-9]*'.format(feed['asset'],feed['asset_code']),\
-  '/nas/projects/Tactic/bilal/asset/{0}_{1}/rigging/*/alembic/*_v[0-9]*'.format(feed['asset'],feed['asset_code']), '/nas/projects/Tactic/bilal/asset/{0}_{1}/rigging/*/scens/*_v[0-9]*'.format(feed['asset'],feed['asset_code']),\
-  '/nas/projects/Tactic/bilal/asset/{0}_{1}/texturing/*/alembic/*_v[0-9]*'.format(feed['asset'],feed['asset_code']), '/nas/projects/Tactic/bilal/asset/{0}_{1}/texturing/*/scenes/*_v[0-9]*'.format(feed['asset'],feed['asset_code'])]
+  assetPaths = ['/nas/projects/Tactic/bilal/asset/{0}_{1}/modeling/'.format(feed['asset'],feed['asset_code']), '/nas/projects/Tactic/bilal/asset/{0}_{1}/rigging/'.format(feed['asset'],feed['asset_code']), \
+  '/nas/projects/Tactic/bilal/asset/{0}_{1}/texturing/'.format(feed['asset'],feed['asset_code'])]
   for pth in assetPaths:
-    if glob.glob(pth):
-      assetFiles.extend([(fi, size_format(os.path.getsize(fi))) for fi in glob.glob(pth)])
-  #assetFiles.sort(key= lambda f:(os.path.getmtime(f[0])), reverse=True)
-  #assetFiles.sort()
+    for sdir in os.listdir(pth):
+      if glob.glob(pth+sdir+'/alembic/*_v[0-9]*'):
+        fld = [(fi, size_format(os.path.getsize(fi))) for fi in glob.glob(pth+sdir+'/alembic/*_v[0-9]*')]
+        fld.sort(reverse=True)
+        assetFiles.append(fld)
+      if glob.glob(pth+sdir+'/scenes/*_v[0-9]*'):
+        fld = [(fi, size_format(os.path.getsize(fi))) for fi in glob.glob(pth+sdir+'/scenes/*_v[0-9]*')]
+        fld.sort(reverse=True)
+        assetFiles.append(fld)
   return assetFiles
-
-def getShotAssets(shot_code):
-  shotAssetsList = []
-  expr = ("@SOBJECT(vfx/asset_in_shot['shot_code', '%s'])" % (shot_code))
-  assets = server.eval(expr)
-  for ast in assets:
-    asset = server.eval("@SOBJECT(vfx/asset['code','%s'])" % (ast['asset_code']))
-    if asset:
-      shotAssetsList.append({'asset_code':asset[0]['code'], 'name':asset[0]['name'], 'category':asset[0]['asset_category'], 'type':asset[0]['asset_type']})
-    #else:
-    #  shotAssetsList.append({'asset_code':'-', 'name':'-', 'category':'', 'type':'-'})
-  return shotAssetsList
-
-def getUserAssetList(user):
-  userAssetList = []
-  feed = {'seq':'', 'scn':'', 'shot':'', 'user':user}
-  userShots = getUserShotTaskList(feed)
-  for shot in userShots:
-    assets = getShotAssets(shot['shot_code'])
-    if assets:
-      for asset in assets:
-        if not asset in userAssetList:
-          userAssetList.append(asset)
-  return sorted(userAssetList, key= lambda k:(k['name']))
 
 def getStatusUpdate(infoPackage):
   print infoPackage
+  for files in infoPackage:
+    if files[1] == 'true':
+      if not os.path.exists(os.path.join('/nas/projects/Tactic/bilal/render/temp', *files[0].split('/')[5:-1])):
+        os.makedirs(os.path.join('/nas/projects/Tactic/bilal/render/temp', *files[0].split('/')[5:-1]))
+      try:
+        #os.rename(files[0], os.path.join('/nas/projects/Tactic/bilal/render/temp', *files[0].split('/')[5:]))
+        shutil.copy2(files[0], os.path.join('/nas/projects/Tactic/bilal/render/temp', *files[0].split('/')[5:]))
+      except Exception as e:
+        print e
   return json.dumps(infoPackage, ensure_ascii=False)
-
 
 def size_format(size):
     units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -206,8 +198,6 @@ def size_format(size):
         if size < 1024:  return '%0.2f %s' %(size, u)
         size /= 1024.0
     return '%0.2f %s' %(size, units[-1])
-
-
 
 
 dispatcherJson.register_function(getSequenceList,			"getSequenceList")
@@ -219,39 +209,9 @@ dispatcherJson.register_function(getShotByName,				"getShotByName")
 dispatcherJson.register_function(getSeqByCode,				"getSeqByCode")
 dispatcherJson.register_function(getScnByCode,				"getScnByCode")
 dispatcherJson.register_function(getShotByCode,				"getShotByCode")
-dispatcherJson.register_function(getUserShotTaskList,			"getUserShotTaskList")
+dispatcherJson.register_function(getUserAssignedShotList,		"getUserAssignedShotList")
+dispatcherJson.register_function(getUserAssignedAssetList,		"getUserAssignedAssetList")
 dispatcherJson.register_function(getShotFiles,				"getShotFiles")
 dispatcherJson.register_function(getAssetFiles,				"getAssetFiles")
-dispatcherJson.register_function(getShotAssets,				"getShotAssets")
-dispatcherJson.register_function(getUserAssetList,			"getUserAssetList")
 dispatcherJson.register_function(getStatusUpdate,			"getStatusUpdate")
 
-
-'''
-import os, sys
-import getpass
-import types
-
-# set up environment
-os.environ['TACTIC_APP_SERVER'] = "cherrypy"
-os.environ['TACTIC_MODE'] = "production"
-
-import tacticenv
-from pyasm.common import Environment, Config
-
-tactic_install_dir = tacticenv.get_install_dir()
-tactic_site_dir = tacticenv.get_site_dir()
-
-
-sys.path.insert(0, "%s/src" % tactic_install_dir)
-sys.path.insert(0, "%s/tactic_sites" % tactic_install_dir)
-sys.path.insert(0, tactic_site_dir)
-sys.path.insert(0, "%s/3rd_party/CherryPy" % tactic_install_dir)
-
-from client.tactic_client_lib import TacticServerStub
-   1,1           Top
-server = TacticServerStub.get()
-
-
-
-'''

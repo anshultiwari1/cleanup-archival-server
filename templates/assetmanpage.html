@@ -131,24 +131,6 @@ Description : Asset List Page.
 			}
 
 
-			function loadUserShots(){
-				var feed = {"seq":'', "scn":'', "shot":'', "user":'ashish'};
-				rpc.batchRequest([
-					//{method: 'getUserShotTaskList', params: [feed]}
-					{method: 'getUserAssetList', params: ['ashish']}
-				], {
-					url: url,
-					error: function(json) {
-						alert("Error");
-					},
-					success: function(json){
-						console.log(json[0]);
-						var result = json[0]['result'];
-					}
-				});
-			}
-
-
 			function draw_table(){
 				//loading_time(1);
 				if ($('#user').val()=="") {	alert("Error: user field can not be blank");}
@@ -161,7 +143,6 @@ Description : Asset List Page.
 			}
 
 			function draw_blank_table(){
-				//loading_time(1);
 				$("#userinfoTable > thead").html("");
 				$("#userinfoTable > thead:last").append('<tr><th colspan=1>shots/ assets list</th></tr>');
 				$("#userinfoTable > tbody").html("");
@@ -172,24 +153,24 @@ Description : Asset List Page.
 			}
 
 			function load_blank_details(){
-				//loading_time(1);
 				$("#fileInfoTable > thead").html("");
-				$("#fileInfoTable > thead:last").append('<tr><th colspan=4>shots/ assets files</th></tr>');
-				$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+				$("#fileInfoTable > thead:last").append('<tr><th colspan=3>shots/ assets files</th></tr>');
+				$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Delete it</th></tr>');
 				$("#fileInfoTable > tbody").html("");
 			}
 
 
 			function draw_user_shots_table(){
-				//loading_time(1);
+				loading_time(1);
+				//draw_blank_table();
 				load_blank_details();
 				if ($('#seq_info').val() == '---') {	seq = '';} else {	seq = $('#seq_info').val();}
 				if ($('#scn_info').val() == '---') {	scn = '';} else {	scn = $('#scn_info').val();}
 				if ($('#shot_info').val() == '---') {	sht = '';} else {	sht = $('#shot_info').val();}
-				var feed = {"seq":seq, "scn":scn, "shot":sht, "user":$('#user').val()};
+				//var feed = {"seq":seq, "scn":scn, "shot":sht, "user":$('#user').val()};
 				//console.log(feed);
 				rpc.batchRequest([
-					{method: 'getUserShotTaskList', params: [feed]}
+					{method: 'getUserAssignedShotList', params: [$('#user').val()]}
 				], {
 					url: url,
 					error: function(json) {
@@ -214,18 +195,19 @@ Description : Asset List Page.
 							rowCount += 1; 
 						});
 						// loader finish
-						//loading_time(0);
+						loading_time(0);
 					}
 				});
 			}
 
 
 			function draw_user_assets_table(){
-				//loading_time(1);
+				loading_time(1);
+				//draw_blank_table();
 				load_blank_details();
 				var feed = $('#user').val();
 				rpc.batchRequest([
-					{method: 'getUserAssetList', params: [feed]}
+					{method: 'getUserAssignedAssetList', params: [feed]}
 				], {
 					url: url,
 					error: function(json) {
@@ -239,19 +221,27 @@ Description : Asset List Page.
 						$("#userinfoTable > thead:last").append('<tr><th colspan=4>'+$('#user').val()+'\'s assets</th></tr>');
 						$("#userinfoTable > thead:last").append('<tr><th>Asset Code</th><th>Name</th><th>Category</th><th>Type</th></tr>');
 						$("#userinfoTable > tbody").html("");
-						$.each(result, function(value){
-							asset_feed[rowCount] = [result[value]['name'], result[value]['asset_code']];
-							var row = '<tr onclick="loadAssetDetails(\''+rowCount+'\')">>'+
-									'<td><input class="tab_info" value="'+result[value]['asset_code']+'" type="text" disabled="disabled"/></td>'+
-									'<td><input class="tab_info" value="'+result[value]['name']+'" type="text" disabled="disabled"/></td>'+
-									'<td><input class="tab_info" value="'+result[value]['category']+'" type="text" disabled="disabled"/></td>'+
-									'<td><input class="tab_info" value="'+result[value]['type']+'" type="text" disabled="disabled"/></td>'+
+						if (result.length != 0){
+							$.each(result, function(value){
+								asset_feed[rowCount] = [result[value]['name'], result[value]['asset_code']];
+								var row = '<tr onclick="loadAssetDetails(\''+rowCount+'\')">'+
+										'<td><input class="tab_info" value="'+result[value]['asset_code']+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" value="'+result[value]['name']+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" value="'+result[value]['category']+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" value="'+result[value]['type']+'" type="text" disabled="disabled"/></td>'+
+									'</tr>';
+								$("#userinfoTable > tbody:last").append(row);
+								rowCount += 1;
+							});
+						}
+						else {
+							var row = '<tr>'+
+									'<td colspan=4><input class="tab_info" value="there are no assets assigned/ published by '+$('#user').val()+'" type="text" disabled="disabled"/></td>'
 								'</tr>';
 							$("#userinfoTable > tbody:last").append(row);
-							rowCount += 1;
-						});
+						}
 						// loader finish
-						//loading_time(0);
+						loading_time(0);
 					}
 				});
 			}
@@ -271,24 +261,22 @@ Description : Asset List Page.
 						var result = json[0]['result'];
 						var count = 0;
 						$("#fileInfoTable > thead").html("");
-						$("#fileInfoTable > thead:last").append('<tr><th colspan=4>'+shot_feed[info][2]+'_'+shot_feed[info][3]+'</th></tr>');
-						$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th colspan=3>'+shot_feed[info][2]+'_'+shot_feed[info][3]+'</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th>File Name</th><th>Size</th><th>Delete it</th></tr>');
 						$("#fileInfoTable > tbody").html("");
 						$.each(result, function(value){
-							if (count < 2){
-								var row = '<tr style="background-color:#E99999;">'+
-										'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+							if (count < 3){
+								var row = '<tr>'+
+										'<td style="width:68%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
 										'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
-										'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'+
-										'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'
+										'<td><input class="tab_info" id="cb_'+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'+
 									'</tr>';
 							}
 							else {
-								var row = '<tr id="'+result[value][0]+'">'+
-										'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
-										'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
-										'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" onchange="onStatusChange(\'save\',\''+count+'\')" style="width:15px;"/></td>'+
-										'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" onchange="onStatusChange(\'del\',\''+count+'\')" style="width:15px;"/></td>'
+								var row = '<tr class="redRow" id="'+result[value][0]+'">'+
+										'<td style="width:68%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+										'<td style="width:18%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
+										'<td><input class="tab_info" id="cb_'+count+'" type="checkbox" checked="checked" onchange="onStatusChange(\'cb_'+count+'\')" style="width:15px;"/></td>'+
 									'</tr>';
 							}
 							count += 1;
@@ -312,43 +300,51 @@ Description : Asset List Page.
 					success: function(json){
 						//console.log(json[0]);
 						var result = json[0]['result'];
-						var count = 0;
+						var set = 0;
 						$("#fileInfoTable > thead").html("");
-						$("#fileInfoTable > thead:last").append('<tr><th colspan=4>'+asset_feed[info][0]+'_'+asset_feed[info][1]+'</th></tr>');
-						$("#fileInfoTable > thead:last").append('<tr><th>file Name</th><th>Size</th><th>Save it</th><th>Delete it</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th colspan=3>'+asset_feed[info][0]+'_'+asset_feed[info][1]+'</th></tr>');
+						$("#fileInfoTable > thead:last").append('<tr><th>file Name</th><th>Size</th><th>Delete it</th></tr>');
 						$("#fileInfoTable > tbody").html("");
 						$.each(result, function(value){
-							var row = '<tr>'+
-									'<td style="width:58%;"><input class="tab_info" id="ip_file_'+count+'" name="'+result[value][0]+'" style="text-align:left;" value="'+result[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
-									'<td style="width:15%;"><input class="tab_info" style="text-align:right;" value="'+result[value][1]+'" type="text" disabled="disabled"/></td>'+
-									'<td><input class="tab_info" id="cb_save_'+count+'" type="checkbox" onchange="onStatusChange(\'save\',\''+count+'\')" style="width:15px;"/></td>'+
-									'<td><input class="tab_info" id="cb_del_'+count+'" type="checkbox" onchange="onStatusChange(\'del\',\''+count+'\')" style="width:15px;"/></td>'
-								'</tr>';
-							count += 1;
-							$("#fileInfoTable > tbody:last").append(row);
+							var folder = result[value];
+							console.log(folder);
+							var count = 0;
+							$.each(folder, function(value){
+								if (count < 3){
+									var row = '<tr>'+
+											'<td style="width:68%;"><input class="tab_info" id="ip_file_'+set+count+'" name="'+folder[value][0]+'" style="text-align:left;" value="'+folder[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+											'<td style="width:18%;"><input class="tab_info" style="text-align:right;" value="'+folder[value][1]+'" type="text" disabled="disabled"/></td>'+
+											'<td><input class="tab_info" id="cb_'+set+count+'" type="checkbox" disabled="disabled" style="width:15px;"/></td>'
+										'</tr>';
+								}
+								else {
+									var row = '<tr class="redRow">'+
+											'<td style="width:68%;"><input class="tab_info" id="ip_file_'+set+count+'" name="'+folder[value][0]+'" style="text-align:left;" value="'+folder[value][0].split('/').pop()+'" type="text" disabled="disabled"/></td>'+
+											'<td style="width:18%;"><input class="tab_info" style="text-align:right;" value="'+folder[value][1]+'" type="text" disabled="disabled"/></td>'+
+											'<td><input class="tab_info" id="cb_'+set+count+'" type="checkbox" checked="checked" onchange="onStatusChange(\'cb_'+set+count+'\')" style="width:15px;"/></td>'
+										'</tr>';
+								}
+								count += 1;
+								$("#fileInfoTable > tbody:last").append(row);
+								});
+							set += 1;
 						});
-						//attn_time_open();
 						// loader finish
 						//loading_time(0);
 					}
 				});
 			}
 
-			function onStatusChange(opr, row){
-				var rpo;
-				if (opr == 'save'){	rpo = 'del';}
-				else {	rpo = 'save';}
-				if ($('#cb_'+opr+'_'+row).is(':checked')){	$('#cb_'+rpo+'_'+row).attr('disabled', 'diabled');	}
-				else {	$('#cb_'+rpo+'_'+row).removeAttr('disabled');	}
+			function onStatusChange(cb){
+				if ($('#'+cb).is(':checked')){	$('#'+cb).parent().parent().addClass('redRow');}
+				else {	$('#'+cb).parent().parent().removeClass('redRow');}
+				console.log($('#'+cb));
 			}
 
 			function updateStatus(){
 				var rowDataInfo = [];
-				//$('#fileInfoTable > tbody').find('tr').each(function(){
-				//	rowDataInfo.push($(this).attr('id'));
-				//}
 				for (row=0; row<$('#fileInfoTable > tbody').find('tr').length; row++){
-					rowDataInfo.push([$('#ip_file_'+row).attr('name'), ($('#cb_save_'+row).is(':checked')).toString(), ($('#cb_del_'+row).is(':checked')).toString()]);
+					rowDataInfo.push([$('#ip_file_'+row).attr('name'), ($('#cb_'+row).is(':checked')).toString()]);
 				};
 
 				rpc.batchRequest([
@@ -365,7 +361,6 @@ Description : Asset List Page.
 
 			}
 
-			/*
 			function loading_time(visible){
 				if (visible) {
 					$("#loading_fade").show();
@@ -377,26 +372,12 @@ Description : Asset List Page.
 				}
 			}
 
-			function attn_time_open(){
-				window.scrollTo(0,0);
-				$("#fade").slideDown("fast");
-				$("#attn_time").delay(100).slideDown("slow");
-				$("#attn_time").show();
-			}
-
-
-			function attn_time_close(){
-				$("#attn_time").delay(100).slideUp("slow");
-				$("#fade").delay(300).slideUp("slow");
-			}*/
-
 			$(document).ready(function (){
 				var now = new Date();
 				$('#date').html(("0" + now.getDate()).slice(-2)+' - '+("0" + (now.getMonth()+1)).slice(-2)+' - '+now.getFullYear());
 				setClient();
 				//draw_blank_table();
 				loadSeqList();
-				//loadUserShots();
 			});
 			
 		</script> 
@@ -435,6 +416,10 @@ Description : Asset List Page.
 				font-family: Arial, Helvetica;
 			}
 			
+			.redRow{
+				background-color: #E99999 !important;
+			}
+
 			.form-control{
 				padding: 0 12px;
 				font-size: inherit;
@@ -535,21 +520,7 @@ Description : Asset List Page.
 				width:30%;
 				margin-top: 2em;
 			}
-			#attn_time{
-				display: none;
-				position: absolute;
-				top: 25%;
-				left: 60%;
-				margin-left: -30%;
-				padding: 10px;
-				z-index: 1002;
-				background: #d0d0d0;
-				width:42%;
-				border:solid 4px rgb(255, 242, 242);
-				border-radius: 5px;
-				margin-top: 2em;
-			}
-			#fade, #loading_fade{
+			#loading_fade{
 				display: none;
 				position: fixed;
 				top: 0%;
@@ -573,17 +544,6 @@ Description : Asset List Page.
 				border-color: whitesmoke;
 				color: whitesmoke;
 				font-weight: bold;
-			}
-
-			#pre, #nxt{
-				border-color: #d9534f;
-				border-style: Solid;
-				border-radius: 5em;
-				height: 14px;
-				width: 14px;
-				vertical-align: middle;
-				margin-left: -20px;
-				margin-bottom: 3px;
 			}
 
 			.filter_table{
@@ -711,22 +671,9 @@ Description : Asset List Page.
 
 							</div>
 						</div>
-
 						</hr>
-						<!--
-						<div id="attn_time" class="cluster" style="max-height:60em; overflow-y:scroll;" >
-							<table class="table table-striped table-bordered info_table" id="assetInfoTable">
-								<thead>
-									<tr><th>Asset Code</th><th>Name</th><th>Category</th><th>Type</th><th></th></tr>
-								</thead>
-								<tbody>
-								</tbody>
-							</table></br>
-						</div>
-						<div id="fade" onClick="attn_time_close();"></div>
 						<div class="cluster" style="height:66em;" id="loader"><img src="../media/Images/loading.gif" height="45" width="45"/></div>
 						<div id="loading_fade"></div>
-						-->
 					</div>
 				</div>
 			</section>
